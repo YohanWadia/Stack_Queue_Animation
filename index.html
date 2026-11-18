@@ -112,6 +112,7 @@
             align-items: center;
             gap: 0.5rem;
             transition: all 0.2s;
+            z-index: 10;
         }
 
         .back-btn:hover {
@@ -163,12 +164,12 @@
         }
 
         .block.exiting {
-            transform: scale(0) translateY(-30px);
+            transform: scale(0) translateX(-30px);
             opacity: 0;
         }
 
         .block.entering {
-            transform: scale(0) translateY(30px);
+            transform: scale(0) translateX(30px);
             opacity: 0;
         }
 
@@ -179,7 +180,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             font-weight: 700;
             font-size: 0.85rem;
             letter-spacing: 0.05em;
@@ -187,6 +188,7 @@
 
         .pointer.head-pointer {
             color: #60a5fa;
+            left: 0px !important; /* Strictly fixed on left */
         }
 
         .pointer.tail-pointer {
@@ -206,12 +208,6 @@
             gap: 10px;
             align-items: center;
             position: relative;
-        }
-
-        .stack-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
         }
 
         .stack-block {
@@ -238,12 +234,12 @@
         }
 
         .stack-block.exiting {
-            transform: scale(0) translateX(50px);
+            transform: scale(0) translateY(-30px);
             opacity: 0;
         }
 
         .stack-block.entering {
-            transform: scale(0) translateY(-40px);
+            transform: scale(0) translateY(30px);
             opacity: 0;
         }
 
@@ -256,7 +252,7 @@
             color: #34d399;
             font-weight: 700;
             font-size: 0.9rem;
-            transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
@@ -279,13 +275,13 @@
         <button class="back-btn" onclick="switchView('home-view')">← Back</button>
         <div class="stage">
             <div style="position: relative;">
-                <!-- Head Pointer (Fixed on left) -->
-                <div id="q-head-ptr" class="pointer head-pointer" style="left: 0px;">
+                <!-- Head Pointer (Strictly Fixed on left) -->
+                <div id="q-head-ptr" class="pointer head-pointer">
                     <span>HEAD</span>
                     <span class="pointer-arrow">▼</span>
                 </div>
                 <!-- Tail Pointer (Dynamic on right) -->
-                <div id="q-tail-ptr" class="pointer tail-pointer" style="left: 320px;">
+                <div id="q-tail-ptr" class="pointer tail-pointer">
                     <span>TAIL</span>
                     <span class="pointer-arrow">▼</span>
                 </div>
@@ -311,17 +307,15 @@
     </div>
 
     <script>
-        // View Switching
         let queueInterval = null;
         let stackInterval = null;
 
         function switchView(viewId) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
-
-            // Clear intervals when leaving views
             clearInterval(queueInterval);
             clearInterval(stackInterval);
+
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
 
             if (viewId === 'queue-view') {
                 initQueueAnimation();
@@ -333,12 +327,11 @@
         // --- QUEUE ANIMATION LOGIC ---
         function initQueueAnimation() {
             const track = document.getElementById('queue-track');
-            const headPtr = document.getElementById('q-head-ptr');
             const tailPtr = document.getElementById('q-tail-ptr');
             
             let elements = [1, 2, 3, 4, 5, 6];
             let nextVal = 7;
-            let stepPhase = 0; // 0: remove front, 1: add rear
+            let stepPhase = 0; // 0: remove, 1: add
 
             function renderQueue() {
                 track.innerHTML = '';
@@ -349,7 +342,6 @@
                     track.appendChild(div);
                 });
 
-                // Position Tail Pointer over the last element
                 const blockWidth = 76; // 64px + 12px gap
                 const lastIndex = elements.length - 1;
                 tailPtr.style.left = (lastIndex * blockWidth) + 16 + 'px';
@@ -361,7 +353,6 @@
                 const blocks = track.querySelectorAll('.block');
                 
                 if (stepPhase === 0) {
-                    // REMOVE operation (front element lights up and exits)
                     if (blocks.length > 0) {
                         blocks[0].classList.add('highlight');
                         setTimeout(() => {
@@ -374,7 +365,6 @@
                     }
                     stepPhase = 1;
                 } else {
-                    // ADD operation (new element enters at tail)
                     const newVal = nextVal++;
                     elements.push(newVal);
                     
@@ -391,7 +381,6 @@
                         }, 500);
                     }, 50);
 
-                    // Reset loop if items exceed limit
                     if (nextVal > 13) {
                         elements = [1, 2, 3, 4, 5, 6];
                         nextVal = 7;
@@ -401,14 +390,16 @@
             }, 2000);
         }
 
-        // --- STACK ANIMATION LOGIC ---
+        // --- STACK ANIMATION LOGIC (Multi-pop & Multi-push) ---
         function initStackAnimation() {
             const track = document.getElementById('stack-track');
             const topPtr = document.getElementById('s-top-ptr');
 
             let stack = [1, 2, 3, 4, 5, 6];
-            let nextPush = 7;
-            let stackPhase = 0; // 0: pop top, 1: push new
+            let nextVal = 7;
+            // Scripted actions: positive = push count, negative = pop count
+            const actions = [-2, 3, -3, 2, -2, 3]; 
+            let actionIndex = 0;
 
             function renderStack() {
                 track.innerHTML = '';
@@ -419,57 +410,61 @@
                     track.appendChild(div);
                 });
 
-                // Position Top Pointer next to the top element
                 const blockHeight = 66; // 56px + 10px gap
-                const topIndex = stack.length - 1;
-                // Bottom of stack is index 0, top is index length-1
+                const topIndex = Math.max(0, stack.length - 1);
                 topPtr.style.bottom = (topIndex * blockHeight) + 12 + 'px';
             }
 
             renderStack();
 
             stackInterval = setInterval(() => {
-                const blocks = track.querySelectorAll('.stack-block');
+                const action = actions[actionIndex];
+                actionIndex = (actionIndex + 1) % actions.length;
 
-                if (stackPhase === 0) {
-                    // POP operation (top element lights up and exits)
-                    if (blocks.length > 0) {
-                        const topBlock = blocks[blocks.length - 1];
-                        topBlock.classList.add('highlight');
-                        setTimeout(() => {
-                            topBlock.classList.add('exiting');
+                if (action < 0) {
+                    // POP multiple items sequentially
+                    let popsToDo = Math.abs(action);
+                    let popInterval = setInterval(() => {
+                        const blocks = track.querySelectorAll('.stack-block');
+                        if (blocks.length > 0 && popsToDo > 0) {
+                            const topBlock = blocks[blocks.length - 1];
+                            topBlock.classList.add('highlight', 'exiting');
                             setTimeout(() => {
                                 stack.pop();
                                 renderStack();
                             }, 350);
-                        }, 400);
-                    }
-                    stackPhase = 1;
+                            popsToDo--;
+                        } else {
+                            clearInterval(popInterval);
+                        }
+                    }, 500);
                 } else {
-                    // PUSH operation (new element enters on top)
-                    const valToAdd = nextPush++;
-                    stack.push(valToAdd);
+                    // PUSH multiple items sequentially
+                    let pushesToDo = action;
+                    let pushInterval = setInterval(() => {
+                        if (pushesToDo > 0) {
+                            stack.push(nextVal++);
+                            renderStack();
+                            const newBlocks = track.querySelectorAll('.stack-block');
+                            const topBlock = newBlocks[newBlocks.length - 1];
+                            topBlock.classList.add('entering');
+                            setTimeout(() => {
+                                topBlock.classList.remove('entering');
+                                topBlock.classList.add('highlight');
+                                setTimeout(() => topBlock.classList.remove('highlight'), 400);
+                            }, 50);
 
-                    renderStack();
-                    const newBlocks = track.querySelectorAll('.stack-block');
-                    const topBlock = newBlocks[newBlocks.length - 1];
-
-                    topBlock.classList.add('entering');
-                    setTimeout(() => {
-                        topBlock.classList.remove('entering');
-                        topBlock.classList.add('highlight');
-                        setTimeout(() => {
-                            topBlock.classList.remove('highlight');
-                        }, 500);
-                    }, 50);
-
-                    if (nextPush > 13) {
-                        stack = [1, 2, 3, 4, 5, 6];
-                        nextPush = 7;
-                    }
-                    stackPhase = 0;
+                            if (nextVal > 15) {
+                                stack = [1, 2, 3, 4, 5, 6];
+                                nextVal = 7;
+                            }
+                            pushesToDo--;
+                        } else {
+                            clearInterval(pushInterval);
+                        }
+                    }, 500);
                 }
-            }, 2000);
+            }, 2500);
         }
     </script>
 </body>
