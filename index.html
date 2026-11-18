@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Structures Visualizer - Queue & Stack</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* View Management */
+        .view {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .view.active {
+            display: flex;
+        }
+
+        /* Home View Styles */
+        .home-container {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .menu-buttons {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .menu-btn {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            padding: 1.25rem 3rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            border-radius: 1rem;
+            cursor: pointer;
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -5px rgba(59, 130, 246, 0.6);
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+        }
+
+        .menu-btn.stack {
+            background: linear-gradient(135deg, #10b981, #047857);
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+        }
+
+        .menu-btn.stack:hover {
+            box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.6);
+            background: linear-gradient(135deg, #059669, #065f46);
+        }
+
+        /* Back Button */
+        .back-btn {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: #1e293b;
+            color: #cbd5e1;
+            border: 1px solid #334155;
+            padding: 0.6rem 1.2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: #334155;
+            color: #ffffff;
+        }
+
+        /* Animation Stage Styles */
+        .stage {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* Queue Horizontal Layout */
+        .queue-track {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            position: relative;
+            padding-top: 40px;
+        }
+
+        .block {
+            width: 64px;
+            height: 64px;
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f8fafc;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .block.highlight {
+            background: #3b82f6;
+            border-color: #60a5fa;
+            color: white;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+            transform: scale(1.08);
+        }
+
+        .block.exiting {
+            transform: scale(0) translateY(-30px);
+            opacity: 0;
+        }
+
+        .block.entering {
+            transform: scale(0) translateY(30px);
+            opacity: 0;
+        }
+
+        /* Pointers */
+        .pointer {
+            position: absolute;
+            top: -5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        .pointer.head-pointer {
+            color: #60a5fa;
+        }
+
+        .pointer.tail-pointer {
+            color: #f43f5e;
+        }
+
+        .pointer-arrow {
+            font-size: 1.25rem;
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        /* Stack Vertical Layout */
+        .stack-track {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            align-items: center;
+            position: relative;
+        }
+
+        .stack-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .stack-block {
+            width: 140px;
+            height: 56px;
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f8fafc;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stack-block.highlight {
+            background: #10b981;
+            border-color: #34d399;
+            color: white;
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
+            transform: scale(1.05);
+        }
+
+        .stack-block.exiting {
+            transform: scale(0) translateX(50px);
+            opacity: 0;
+        }
+
+        .stack-block.entering {
+            transform: scale(0) translateY(-40px);
+            opacity: 0;
+        }
+
+        .top-pointer {
+            position: absolute;
+            left: -80px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #34d399;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HOME PAGE -->
+    <div id="home-view" class="view active">
+        <div class="home-container">
+            <h1>Data Structures Visualizer</h1>
+            <p class="subtitle">Select a data structure to launch the animation</p>
+            <div class="menu-buttons">
+                <button class="menu-btn" onclick="switchView('queue-view')">QUEUE (FIFO)</button>
+                <button class="menu-btn stack" onclick="switchView('stack-view')">STACK (LIFO)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUEUE VIEW -->
+    <div id="queue-view" class="view">
+        <button class="back-btn" onclick="switchView('home-view')">← Back</button>
+        <div class="stage">
+            <div style="position: relative;">
+                <!-- Head Pointer (Fixed on left) -->
+                <div id="q-head-ptr" class="pointer head-pointer" style="left: 0px;">
+                    <span>HEAD</span>
+                    <span class="pointer-arrow">▼</span>
+                </div>
+                <!-- Tail Pointer (Dynamic on right) -->
+                <div id="q-tail-ptr" class="pointer tail-pointer" style="left: 320px;">
+                    <span>TAIL</span>
+                    <span class="pointer-arrow">▼</span>
+                </div>
+                <!-- Queue Track -->
+                <div id="queue-track" class="queue-track"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STACK VIEW -->
+    <div id="stack-view" class="view">
+        <button class="back-btn" onclick="switchView('home-view')">← Back</button>
+        <div class="stage">
+            <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+                <!-- Top Pointer -->
+                <div id="s-top-ptr" class="top-pointer">
+                    <span>TOP ➔</span>
+                </div>
+                <!-- Stack Track -->
+                <div id="stack-track" class="stack-track"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // View Switching
+        let queueInterval = null;
+        let stackInterval = null;
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+
+            // Clear intervals when leaving views
+            clearInterval(queueInterval);
+            clearInterval(stackInterval);
+
+            if (viewId === 'queue-view') {
+                initQueueAnimation();
+            } else if (viewId === 'stack-view') {
+                initStackAnimation();
+            }
+        }
+
+        // --- QUEUE ANIMATION LOGIC ---
+        function initQueueAnimation() {
+            const track = document.getElementById('queue-track');
+            const headPtr = document.getElementById('q-head-ptr');
+            const tailPtr = document.getElementById('q-tail-ptr');
+            
+            let elements = [1, 2, 3, 4, 5, 6];
+            let nextVal = 7;
+            let stepPhase = 0; // 0: remove front, 1: add rear
+
+            function renderQueue() {
+                track.innerHTML = '';
+                elements.forEach((val) => {
+                    const div = document.createElement('div');
+                    div.className = 'block';
+                    div.innerText = val;
+                    track.appendChild(div);
+                });
+
+                // Position Tail Pointer over the last element
+                const blockWidth = 76; // 64px + 12px gap
+                const lastIndex = elements.length - 1;
+                tailPtr.style.left = (lastIndex * blockWidth) + 16 + 'px';
+            }
+
+            renderQueue();
+
+            queueInterval = setInterval(() => {
+                const blocks = track.querySelectorAll('.block');
+                
+                if (stepPhase === 0) {
+                    // REMOVE operation (front element lights up and exits)
+                    if (blocks.length > 0) {
+                        blocks[0].classList.add('highlight');
+                        setTimeout(() => {
+                            blocks[0].classList.add('exiting');
+                            setTimeout(() => {
+                                elements.shift();
+                                renderQueue();
+                            }, 350);
+                        }, 400);
+                    }
+                    stepPhase = 1;
+                } else {
+                    // ADD operation (new element enters at tail)
+                    const newVal = nextVal++;
+                    elements.push(newVal);
+                    
+                    renderQueue();
+                    const newBlocks = track.querySelectorAll('.block');
+                    const lastBlock = newBlocks[newBlocks.length - 1];
+                    
+                    lastBlock.classList.add('entering');
+                    setTimeout(() => {
+                        lastBlock.classList.remove('entering');
+                        lastBlock.classList.add('highlight');
+                        setTimeout(() => {
+                            lastBlock.classList.remove('highlight');
+                        }, 500);
+                    }, 50);
+
+                    // Reset loop if items exceed limit
+                    if (nextVal > 13) {
+                        elements = [1, 2, 3, 4, 5, 6];
+                        nextVal = 7;
+                    }
+                    stepPhase = 0;
+                }
+            }, 2000);
+        }
+
+        // --- STACK ANIMATION LOGIC ---
+        function initStackAnimation() {
+            const track = document.getElementById('stack-track');
+            const topPtr = document.getElementById('s-top-ptr');
+
+            let stack = [1, 2, 3, 4, 5, 6];
+            let nextPush = 7;
+            let stackPhase = 0; // 0: pop top, 1: push new
+
+            function renderStack() {
+                track.innerHTML = '';
+                stack.forEach((val) => {
+                    const div = document.createElement('div');
+                    div.className = 'stack-block';
+                    div.innerText = val;
+                    track.appendChild(div);
+                });
+
+                // Position Top Pointer next to the top element
+                const blockHeight = 66; // 56px + 10px gap
+                const topIndex = stack.length - 1;
+                // Bottom of stack is index 0, top is index length-1
+                topPtr.style.bottom = (topIndex * blockHeight) + 12 + 'px';
+            }
+
+            renderStack();
+
+            stackInterval = setInterval(() => {
+                const blocks = track.querySelectorAll('.stack-block');
+
+                if (stackPhase === 0) {
+                    // POP operation (top element lights up and exits)
+                    if (blocks.length > 0) {
+                        const topBlock = blocks[blocks.length - 1];
+                        topBlock.classList.add('highlight');
+                        setTimeout(() => {
+                            topBlock.classList.add('exiting');
+                            setTimeout(() => {
+                                stack.pop();
+                                renderStack();
+                            }, 350);
+                        }, 400);
+                    }
+                    stackPhase = 1;
+                } else {
+                    // PUSH operation (new element enters on top)
+                    const valToAdd = nextPush++;
+                    stack.push(valToAdd);
+
+                    renderStack();
+                    const newBlocks = track.querySelectorAll('.stack-block');
+                    const topBlock = newBlocks[newBlocks.length - 1];
+
+                    topBlock.classList.add('entering');
+                    setTimeout(() => {
+                        topBlock.classList.remove('entering');
+                        topBlock.classList.add('highlight');
+                        setTimeout(() => {
+                            topBlock.classList.remove('highlight');
+                        }, 500);
+                    }, 50);
+
+                    if (nextPush > 13) {
+                        stack = [1, 2, 3, 4, 5, 6];
+                        nextPush = 7;
+                    }
+                    stackPhase = 0;
+                }
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
